@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CoinReel</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1A1025">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<style>
+  :root{
+    --bg:#1A1025;
+    --bg-elevated:#241733;
+    --bg-card:#2C1D40;
+    --gold:#F4B740;
+    --gold-dim:#8A6B24;
+    --coral:#FF6B6B;
+    --text:#F5F0FA;
+    --text-dim:#B6A8C4;
+    --line:#3A2A4F;
+    --green:#5FCE8F;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+  }
+  h1,h2,h3,.brand,.coin-huge,.tabbar button span.label{font-family:'Poppins',sans-serif;}
+  #app{
+    width:100%;
+    max-width:460px;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    background:var(--bg);
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:18px 20px 14px;
+  }
+  .brand{
+    font-size:20px;
+    font-weight:700;
+    letter-spacing:-0.02em;
+  }
+  .brand span{color:var(--gold);}
+  .wallet-pill{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    padding:7px 14px;
+    border-radius:999px;
+    font-weight:600;
+    font-size:15px;
+  }
+  .wallet-pill .dot{
+    width:16px;height:16px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #FFE49A, var(--gold));
+    flex-shrink:0;
+  }
+  .wallet-pill.bump{animation:bump .35s ease;}
+  @keyframes bump{
+    0%{transform:scale(1);}
+    40%{transform:scale(1.18);}
+    100%{transform:scale(1);}
+  }
+
+  /* ---------- Screens ---------- */
+  .screen{display:none; flex:1; flex-direction:column; padding:0 0 90px; overflow-y:auto;}
+  .screen.active{display:flex;}
+
+  /* ---------- Auth screen ---------- */
+  #authScreen{
+    display:flex; flex-direction:column; justify-content:center;
+    padding:40px 28px; flex:1;
+  }
+  #authScreen.active{display:flex;}
+  .auth-hero{margin-bottom:34px;}
+  .auth-hero .coin-huge{
+    font-size:42px; font-weight:800; color:var(--gold);
+    letter-spacing:-0.02em; margin-bottom:6px;
+  }
+  .auth-hero p{color:var(--text-dim); font-size:15px; line-height:1.5;}
+  input[type=text]{
+    width:100%;
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:15px 16px;
+    border-radius:14px;
+    font-size:15px;
+    margin-bottom:14px;
+    font-family:'Inter',sans-serif;
+  }
+  input[type=text]:focus{outline:2px solid var(--gold); outline-offset:1px;}
+  .btn-primary{
+    width:100%;
+    background:var(--coral);
+    color:#1A1025;
+    border:none;
+    padding:16px;
+    border-radius:14px;
+    font-weight:700;
+    font-size:15.5px;
+    font-family:'Poppins',sans-serif;
+    cursor:pointer;
+  }
+  .btn-primary:active{transform:scale(0.98);}
+  .auth-note{color:var(--text-dim); font-size:12.5px; margin-top:16px; text-align:center; line-height:1.5;}
+
+  /* ---------- Reels screen ---------- */
+  .reel-wrap{
+    flex:1; display:flex; flex-direction:column;
+    padding:6px 16px 0;
+    gap:16px;
+  }
+  .reel-card{
+    background:var(--bg-card);
+    border-radius:20px;
+    overflow:hidden;
+    border:1px solid var(--line);
+  }
+  .reel-video-box{
+    position:relative;
+    width:100%;
+    aspect-ratio:9/16;
+    background:#000;
+  }
+  .reel-video-box video{width:100%; height:100%; object-fit:cover; display:block;}
+  .reel-progress-ring{
+    position:absolute; top:14px; right:14px;
+    width:46px; height:46px;
+  }
+  .reel-meta{
+    padding:14px 16px 16px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .reel-meta .title{font-weight:600; font-size:14.5px;}
+  .reel-meta .sub{color:var(--text-dim); font-size:12.5px; margin-top:2px;}
+  .reel-earn-badge{
+    background:rgba(244,183,64,0.14);
+    color:var(--gold);
+    padding:6px 12px;
+    border-radius:999px;
+    font-size:12.5px;
+    font-weight:700;
+    white-space:nowrap;
+  }
+  .reel-earn-badge.done{background:rgba(95,206,143,0.14); color:var(--green);}
+
+  /* ---------- Games screen ---------- */
+  .section-head{padding:20px 20px 4px;}
+  .section-head h2{font-size:19px; font-weight:700;}
+  .section-head p{color:var(--text-dim); font-size:13.5px; margin-top:3px;}
+  .game-grid{padding:16px 20px; display:flex; flex-direction:column; gap:14px;}
+  .game-card{
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:20px;
+  }
+  .game-card h3{font-size:16px; font-weight:600; margin-bottom:4px;}
+  .game-card p{color:var(--text-dim); font-size:13px; margin-bottom:16px; line-height:1.5;}
+
+  .wheel-box{display:flex; flex-direction:column; align-items:center; gap:16px;}
+  #wheelSvg{transition:transform 3.2s cubic-bezier(.17,.67,.16,.99);}
+  .wheel-shell{position:relative;}
+  .wheel-pointer{
+    position:absolute; top:-6px; left:50%; transform:translateX(-50%);
+    width:0; height:0;
+    border-left:9px solid transparent;
+    border-right:9px solid transparent;
+    border-top:16px solid var(--coral);
+    z-index:2;
+  }
+  .btn-secondary{
+    background:transparent;
+    border:1.5px solid var(--gold);
+    color:var(--gold);
+    padding:12px 20px;
+    border-radius:12px;
+    font-weight:700;
+    font-family:'Poppins',sans-serif;
+    font-size:14px;
+    cursor:pointer;
+  }
+  .btn-secondary:disabled{opacity:0.4; cursor:not-allowed;}
+
+  .quiz-options{display:flex; flex-direction:column; gap:10px;}
+  .quiz-opt{
+    background:var(--bg-elevated);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:13px 16px;
+    border-radius:12px;
+    text-align:left;
+    font-size:14px;
+    cursor:pointer;
+    font-family:'Inter',sans-serif;
+  }
+  .quiz-opt.correct{border-color:var(--green); background:rgba(95,206,143,0.12);}
+  .quiz-opt.wrong{border-color:var(--coral); background:rgba(255,107,107,0.12);}
+
+  /* ---------- Redeem screen ---------- */
+  .redeem-box{margin:16px 20px; background:var(--bg-card); border:1px solid var(--line); border-radius:18px; padding:20px;}
+  .redeem-box h3{font-size:15.5px; margin-bottom:4px;}
+  .redeem-box p{color:var(--text-dim); font-size:13px; margin-bottom:14px;}
+  .redeem-row{display:flex; gap:10px;}
+  .redeem-row input{margin-bottom:0; text-transform:uppercase;}
+  .redeem-row button{
+    background:var(--gold); color:#1A1025; border:none;
+    padding:0 20px; border-radius:14px; font-weight:700; font-family:'Poppins',sans-serif;
+    cursor:pointer; font-size:14px; white-space:nowrap;
+  }
+  .msg{font-size:13px; margin-top:10px; font-weight:600;}
+  .msg.ok{color:var(--green);}
+  .msg.err{color:var(--coral);}
+
+  .reward-list{padding:6px 20px 20px; display:flex; flex-direction:column; gap:12px;}
+  .reward-item{
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:16px;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px;
+  }
+  .reward-item .ri-left h4{font-size:14.5px; font-weight:600; margin-bottom:3px;}
+  .reward-item .ri-left span{color:var(--text-dim); font-size:12.5px;}
+  .reward-item button{
+    background:var(--bg-elevated); border:1px solid var(--gold-dim); color:var(--gold);
+    padding:9px 16px; border-radius:10px; font-weight:700; font-size:13px;
+    cursor:pointer; font-family:'Poppins',sans-serif; flex-shrink:0;
+  }
+  .reward-item button:disabled{opacity:0.35; border-color:var(--line); color:var(--text-dim); cursor:not-allowed;}
+
+  /* ---------- Wallet screen ---------- */
+  .wallet-hero{
+    margin:16px 20px; padding:26px 22px;
+    border-radius:22px;
+    background:linear-gradient(135deg, #2C1D40, #1A1025 130%);
+    border:1px solid var(--line);
+  }
+  .wallet-hero .lbl{color:var(--text-dim); font-size:13px; margin-bottom:6px;}
+  .wallet-hero .big{font-size:38px; font-weight:800; color:var(--gold); font-family:'Poppins',sans-serif;}
+  .wallet-hero .conv{color:var(--text-dim); font-size:12.5px; margin-top:8px;}
+  .history-list{padding:4px 20px 20px; display:flex; flex-direction:column; gap:8px;}
+  .hist-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:12px 4px; border-bottom:1px solid var(--line); font-size:13.5px;
+  }
+  .hist-row .h-desc{color:var(--text);}
+  .hist-row .h-time{color:var(--text-dim); font-size:11.5px; margin-top:2px;}
+  .hist-row .h-amt.pos{color:var(--green); font-weight:700;}
+  .hist-row .h-amt.neg{color:var(--coral); font-weight:700;}
+  .empty-hist{color:var(--text-dim); font-size:13.5px; padding:30px 4px; text-align:center;}
+
+  /* ---------- Tab bar ---------- */
+  .tabbar{
+    position:fixed;
+    bottom:0; left:50%; transform:translateX(-50%);
+    width:100%; max-width:460px;
+    background:var(--bg-elevated);
+    border-top:1px solid var(--line);
+    display:flex;
+    padding:10px 8px calc(10px + env(safe-area-inset-bottom));
+    z-index:10;
+  }
+  .tabbar button{
+    flex:1; background:none; border:none; color:var(--text-dim);
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    padding:6px 2px; cursor:pointer;
+  }
+  .tabbar button.active{color:var(--gold);}
+  .tabbar button .label{font-size:11px; font-weight:600;}
+  .tabbar svg{width:21px; height:21px;}
+
+  #toast{
+    position:fixed; top:16px; left:50%; transform:translateX(-50%) translateY(-70px);
+    background:var(--bg-card); border:1px solid var(--gold-dim); color:var(--gold);
+    padding:12px 20px; border-radius:12px; font-weight:600; font-size:13.5px;
+    z-index:50; transition:transform .35s ease; max-width:90%; text-align:center;
+    box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  }
+  #toast.show{transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- AUTH SCREEN: PHONE -->
+  <div class="screen active" id="authScreen">
+    <div class="auth-hero">
+      <div class="coin-huge">CoinReel</div>
+      <p>Reels dekho, games khelo, coins kamao — coins ko recharge, vouchers aur perks me redeem karo.</p>
+    </div>
+    <div style="display:flex; gap:10px; margin-bottom:14px;">
+      <input type="text" value="+91" readonly style="width:64px; text-align:center; flex-shrink:0; margin-bottom:0;">
+      <input type="text" id="phoneInput" placeholder="10 digit mobile number" maxlength="10" inputmode="numeric" style="margin-bottom:0;">
+    </div>
+    <button class="btn-primary" onclick="sendOtp()">OTP Bhejo</button>
+    <div id="recaptcha-container"></div>
+    <p class="msg err" id="phoneMsg"></p>
+    <p class="auth-note">Number verify karke aage badho — real SMS Firebase ke through aayega.</p>
+  </div>
+
+  <!-- AUTH SCREEN: OTP -->
+  <div class="screen" id="otpScreen">
+    <div class="auth-hero">
+      <div class="coin-huge" style="font-size:30px;">OTP Verify Karo</div>
+      <p id="otpSentTo">Code bheja gaya hai...</p>
+    </div>
+    <input type="text" id="otpInput" placeholder="6 digit OTP" maxlength="6" inputmode="numeric">
+    <button class="btn-primary" onclick="verifyOtp()">Verify Karo</button>
+    <p class="msg err" id="otpMsg"></p>
+    <p class="auth-note" style="cursor:pointer; text-decoration:underline;" onclick="backToPhone()">Number badlo</p>
+  </div>
+
+  <!-- AUTH SCREEN: NAME (first time only) -->
+  <div class="screen" id="nameScreen">
+    <div class="auth-hero">
+      <div class="coin-huge" style="font-size:30px;">Aakhri step</div>
+      <p>Apna naam batao, taaki app tumhe pehchane</p>
+    </div>
+    <input type="text" id="displayNameInput" placeholder="Apna naam likho">
+    <button class="btn-primary" onclick="finishSignup()">Shuru Karo</button>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="mainWrap" style="display:none; flex-direction:column; flex:1;">
+    <div class="topbar">
+      <div class="brand">Coin<span>Reel</span></div>
+      <div class="wallet-pill" id="walletPill"><div class="dot"></div><span id="coinCount">0</span></div>
+    </div>
+
+    <!-- REELS -->
+    <div class="screen active" id="reelsScreen">
+      <div class="reel-wrap" id="reelWrap"></div>
+    </div>
+
+    <!-- GAMES -->
+    <div class="screen" id="gamesScreen">
+      <div class="section-head"><h2>Games</h2><p>Khelo aur coins jeeto</p></div>
+      <div class="game-grid">
+        <div class="game-card">
+          <h3>Lucky Spin</h3>
+          <p>Din me ek baar spin karo, 5 se 40 coins tak jeeto.</p>
+          <div class="wheel-box">
+            <div class="wheel-shell">
+              <div class="wheel-pointer"></div>
+              <svg id="wheelSvg" width="190" height="190" viewBox="0 0 200 200"></svg>
+            </div>
+            <button class="btn-secondary" id="spinBtn" onclick="spinWheel()">Spin Karo</button>
+          </div>
+        </div>
+        <div class="game-card">
+          <h3>Quick Quiz</h3>
+          <p>Sahi jawab do, 10 coins paao.</p>
+          <div id="quizBox"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REDEEM -->
+    <div class="screen" id="redeemScreen">
+      <div class="section-head"><h2>Redeem</h2><p>Code daalo ya coins ko rewards me badlo</p></div>
+      <div class="redeem-box">
+        <h3>Redeem Code</h3>
+        <p>Ek valid code se ek baar 200 coins milte hain.</p>
+        <div class="redeem-row">
+          <input type="text" id="codeInput" placeholder="CODE DAALO">
+          <button onclick="applyCode()">Apply</button>
+        </div>
+        <div class="msg" id="codeMsg"></div>
+      </div>
+      <div class="section-head"><h2 style="font-size:16.5px;">Rewards</h2></div>
+      <div class="reward-list" id="rewardList"></div>
+    </div>
+
+    <!-- WALLET -->
+    <div class="screen" id="walletScreen">
+      <div class="wallet-hero">
+        <div class="lbl">Tumhare paas</div>
+        <div class="big"><span id="walletBig">0</span> coins</div>
+        <div class="conv">100 coins ≈ ₹1-2 value ke rewards ke barabar</div>
+      </div>
+      <div class="section-head"><h2 style="font-size:16.5px;">History</h2></div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+  </div>
+
+  <div class="tabbar" id="tabbar" style="display:none;">
+    <button class="active" data-tab="reels" onclick="showTab('reels')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg>
+      <span class="label">Reels</span>
+    </button>
+    <button data-tab="games" onclick="showTab('games')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="11" rx="5"/><circle cx="8" cy="12.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="16" cy="12.5" r="1.3" fill="currentColor" stroke="none"/></svg>
+      <span class="label">Games</span>
+    </button>
+    <button data-tab="redeem" onclick="showTab('redeem')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M8.5 9.5h5a1.8 1.8 0 010 3.6h-3a1.8 1.8 0 000 3.6h5.5"/></svg>
+      <span class="label">Redeem</span>
+    </button>
+    <button data-tab="wallet" onclick="showTab('wallet')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="6" width="19" height="13" rx="3"/><path d="M2.5 10h19"/><circle cx="17" cy="14.2" r="1.2" fill="currentColor" stroke="none"/></svg>
+      <span class="label">Wallet</span>
+    </button>
+  </div>
+
+  <div id="toast"></div>
+</div>
+
+<script>
+/* ===================== FIREBASE CONFIG ===================== */
+/* Yahan apna Firebase project ka config paste karo (Project Settings > Your apps > Web app se milega) */
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  appId: "YOUR_APP_ID"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+let confirmationResult = null;
+
+function setupRecaptcha(){
+  if(window.recaptchaVerifier) return;
+  window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+    size: 'invisible'
+  });
+}
+
+function sendOtp(){
+  const phoneMsg = document.getElementById('phoneMsg');
+  phoneMsg.textContent = '';
+  const num = document.getElementById('phoneInput').value.trim();
+  if(!/^[0-9]{10}$/.test(num)){
+    phoneMsg.textContent = 'Sahi 10 digit number daalo';
+    return;
+  }
+  setupRecaptcha();
+  const fullNumber = '+91' + num;
+  auth.signInWithPhoneNumber(fullNumber, window.recaptchaVerifier)
+    .then((result) => {
+      confirmationResult = result;
+      document.getElementById('otpSentTo').textContent = fullNumber + ' pe OTP bheja gaya hai';
+      document.getElementById('authScreen').classList.remove('active');
+      document.getElementById('otpScreen').classList.add('active');
+    })
+    .catch((err) => {
+      phoneMsg.textContent = 'OTP nahi bhej paya: ' + err.message;
+      if(window.recaptchaVerifier){ window.recaptchaVerifier.clear(); window.recaptchaVerifier = null; }
+    });
+}
+
+function backToPhone(){
+  document.getElementById('otpScreen').classList.remove('active');
+  document.getElementById('authScreen').classList.add('active');
+  document.getElementById('otpMsg').textContent = '';
+}
+
+function verifyOtp(){
+  const otpMsg = document.getElementById('otpMsg');
+  const code = document.getElementById('otpInput').value.trim();
+  if(!confirmationResult){ otpMsg.textContent = 'Pehle OTP mangwao'; return; }
+  if(code.length !== 6){ otpMsg.textContent = 'Sahi 6 digit OTP daalo'; return; }
+  confirmationResult.confirm(code)
+    .then((res) => {
+      onAuthSuccess(res.user);
+    })
+    .catch((err) => {
+      otpMsg.textContent = 'Galat OTP: ' + err.message;
+    });
+}
+
+function onAuthSuccess(user){
+  loadState(user.uid);
+  document.getElementById('otpScreen').classList.remove('active');
+  if(state && state.name){
+    enterApp();
+  } else {
+    document.getElementById('nameScreen').classList.add('active');
+    window._pendingUid = user.uid;
+    window._pendingPhone = user.phoneNumber;
+  }
+}
+
+function finishSignup(){
+  const name = document.getElementById('displayNameInput').value.trim();
+  if(!name){ alert('Naam likhna zaroori hai'); return; }
+  state = defaultState(window._pendingUid, window._pendingPhone, name);
+  saveState();
+  document.getElementById('nameScreen').classList.remove('active');
+  enterApp();
+}
+
+function enterApp(){
+  document.getElementById('mainWrap').style.display = 'flex';
+  document.getElementById('tabbar').style.display = 'flex';
+  renderAll();
+}
+
+/* ===================== STATE (per phone/uid) ===================== */
+let state = null;
+let currentStorageKey = null;
+
+function loadState(uid){
+  currentStorageKey = 'coinreel_state_' + uid;
+  const raw = localStorage.getItem(currentStorageKey);
+  state = raw ? JSON.parse(raw) : null;
+}
+function saveState(){ localStorage.setItem(currentStorageKey, JSON.stringify(state)); }
+
+function defaultState(uid, phone, name){
+  return {
+    uid, phone, name,
+    coins: 20,
+    history: [{desc:'Welcome bonus', amt:20, t: Date.now()}],
+    watchedReels: [],
+    lastSpinDay: null,
+    usedCodes: [],
+    redeemedRewards: []
+  };
+}
+
+/* Auto-login if session persists */
+auth.onAuthStateChanged((user)=>{
+  if(user){
+    loadState(user.uid);
+    if(state && state.name){
+      document.getElementById('authScreen').classList.remove('active');
+      enterApp();
+    }
+  }
+});
+
+/* ===================== TABS ===================== */
+function showTab(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(name+'Screen').classList.add('active');
+  document.querySelectorAll('.tabbar button').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.tabbar button[data-tab="'+name+'"]').classList.add('active');
+  if(name === 'wallet') renderWallet();
+}
+
+/* ===================== COINS CORE ===================== */
+function addCoins(amount, desc){
+  state.coins += amount;
+  state.history.unshift({desc, amt:amount, t: Date.now()});
+  saveState();
+  renderCoinCount();
+  showToast((amount>0? '+':'') + amount + ' coins — ' + desc);
+}
+function spendCoins(amount, desc){
+  if(state.coins < amount) return false;
+  state.coins -= amount;
+  state.history.unshift({desc, amt:-amount, t: Date.now()});
+  saveState();
+  renderCoinCount();
+  return true;
+}
+function renderCoinCount(){
+  document.getElementById('coinCount').textContent = state.coins;
+  document.getElementById('walletBig').textContent = state.coins;
+  const pill = document.getElementById('walletPill');
+  pill.classList.remove('bump'); void pill.offsetWidth; pill.classList.add('bump');
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ===================== REELS ===================== */
+/* Placeholder sample videos — replace 'src' with your own video links */
+const REELS = [
+  {id:'r1', title:'Reel #1', sub:'Apna video link yahan daalo', src:'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', watchSeconds:8, reward:3},
+  {id:'r2', title:'Reel #2', sub:'Apna video link yahan daalo', src:'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm', watchSeconds:8, reward:3},
+  {id:'r3', title:'Reel #3', sub:'Apna video link yahan daalo', src:'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', watchSeconds:8, reward:3},
+];
+
+function renderReels(){
+  const wrap = document.getElementById('reelWrap');
+  wrap.innerHTML = '';
+  REELS.forEach(r=>{
+    const done = state.watchedReels.includes(r.id);
+    const card = document.createElement('div');
+    card.className = 'reel-card';
+    card.innerHTML = `
+      <div class="reel-video-box">
+        <video id="vid_${r.id}" src="${r.src}" playsinline muted loop ${done? '' : 'controls'}></video>
+      </div>
+      <div class="reel-meta">
+        <div>
+          <div class="title">${r.title}</div>
+          <div class="sub">${r.sub}</div>
+        </div>
+        <div class="reel-earn-badge ${done? 'done':''}" id="badge_${r.id}">
+          ${done ? 'Coins mil gaye' : '+' + r.reward + ' coins'}
+        </div>
+      </div>
+    `;
+    wrap.appendChild(card);
+    if(!done){
+      const vidEl = card.querySelector('video');
+      let awarded = false;
+      vidEl.addEventListener('timeupdate', ()=>{
+        if(!awarded && vidEl.currentTime >= r.watchSeconds){
+          awarded = true;
+          state.watchedReels.push(r.id);
+          saveState();
+          addCoins(r.reward, r.title + ' dekha');
+          document.getElementById('badge_'+r.id).textContent = 'Coins mil gaye';
+          document.getElementById('badge_'+r.id).classList.add('done');
+        }
+      });
+    }
+  });
+}
+
+/* ===================== GAMES: SPIN WHEEL ===================== */
+const WHEEL_VALUES = [5, 40, 10, 15, 8, 25, 5, 20];
+const WHEEL_COLORS = ['#F4B740','#FF6B6B','#8A6B24','#5FCE8F','#F4B740','#FF6B6B','#8A6B24','#5FCE8F'];
+
+function drawWheel(){
+  const svg = document.getElementById('wheelSvg');
+  const n = WHEEL_VALUES.length;
+  const cx=100, cy=100, r=95;
+  let html = '';
+  for(let i=0;i<n;i++){
+    const a0 = (i/n)*2*Math.PI - Math.PI/2;
+    const a1 = ((i+1)/n)*2*Math.PI - Math.PI/2;
+    const x0 = cx + r*Math.cos(a0), y0 = cy + r*Math.sin(a0);
+    const x1 = cx + r*Math.cos(a1), y1 = cy + r*Math.sin(a1);
+    html += `<path d="M${cx},${cy} L${x0},${y0} A${r},${r} 0 0,1 ${x1},${y1} Z" fill="${WHEEL_COLORS[i]}" stroke="#1A1025" stroke-width="2"/>`;
+    const mid = (a0+a1)/2;
+    const tx = cx + (r*0.62)*Math.cos(mid), ty = cy + (r*0.62)*Math.sin(mid);
+    html += `<text x="${tx}" y="${ty}" fill="#1A1025" font-size="14" font-weight="700" text-anchor="middle" dominant-baseline="middle" font-family="Poppins">${WHEEL_VALUES[i]}</text>`;
+  }
+  html += `<circle cx="${cx}" cy="${cy}" r="14" fill="#1A1025" stroke="${'#F4B740'}" stroke-width="2"/>`;
+  svg.innerHTML = html;
+}
+
+function todayStr(){ return new Date().toDateString(); }
+
+function refreshSpinBtn(){
+  const btn = document.getElementById('spinBtn');
+  if(state.lastSpinDay === todayStr()){
+    btn.disabled = true;
+    btn.textContent = 'Kal wapas aao';
+  } else {
+    btn.disabled = false;
+    btn.textContent = 'Spin Karo';
+  }
+}
+
+let spinning = false;
+function spinWheel(){
+  if(spinning) return;
+  if(state.lastSpinDay === todayStr()) return;
+  spinning = true;
+  const n = WHEEL_VALUES.length;
+  const idx = Math.floor(Math.random()*n);
+  const sliceDeg = 360/n;
+  const targetMid = idx*sliceDeg + sliceDeg/2;
+  const spins = 5*360;
+  const finalRotation = spins + (360 - targetMid);
+  const svg = document.getElementById('wheelSvg');
+  svg.style.transform = `rotate(${finalRotation}deg)`;
+  setTimeout(()=>{
+    const won = WHEEL_VALUES[idx];
+    state.lastSpinDay = todayStr();
+    saveState();
+    addCoins(won, 'Lucky Spin');
+    refreshSpinBtn();
+    spinning = false;
+  }, 3300);
+}
+
+/* ===================== GAMES: QUIZ ===================== */
+const QUIZ = {
+  q: 'Bharat ki rajdhani kaunsi hai?',
+  options: ['Mumbai','Nai Dilli','Kolkata','Chennai'],
+  correct: 1
+};
+function renderQuiz(){
+  const box = document.getElementById('quizBox');
+  const answered = sessionStorage.getItem('quizAnswered') === '1';
+  box.innerHTML = `<p style="font-weight:600; margin-bottom:12px; font-size:14.5px;">${QUIZ.q}</p><div class="quiz-options" id="quizOpts"></div>`;
+  const optsWrap = document.getElementById('quizOpts');
+  QUIZ.options.forEach((opt, i)=>{
+    const b = document.createElement('button');
+    b.className = 'quiz-opt';
+    b.textContent = opt;
+    b.onclick = ()=>{
+      if(sessionStorage.getItem('quizAnswered') === '1') return;
+      sessionStorage.setItem('quizAnswered','1');
+      document.querySelectorAll('.quiz-opt').forEach((el,j)=>{
+        el.classList.add(j===QUIZ.correct? 'correct' : (j===i? 'wrong':''));
+      });
+      if(i === QUIZ.correct){
+        addCoins(10, 'Quiz jeeta');
+      } else {
+        showToast('Galat jawab — kal fir try karo');
+      }
+    };
+    optsWrap.appendChild(b);
+  });
+  if(answered){
+    document.querySelectorAll('.quiz-opt').forEach(el=>el.disabled = true);
+  }
+}
+
+/* ===================== REDEEM CODES ===================== */
+const VALID_CODES = { 'BHAKTI200':200, 'WELCOME200':200, 'COINREEL200':200 };
+function applyCode(){
+  const input = document.getElementById('codeInput');
+  const code = input.value.trim().toUpperCase();
+  const msg = document.getElementById('codeMsg');
+  if(!code){ return; }
+  if(!VALID_CODES[code]){
+    msg.textContent = 'Ye code valid nahi hai.';
+    msg.className = 'msg err';
+    return;
+  }
+  if(state.usedCodes.includes(code)){
+    msg.textContent = 'Ye code pehle hi use ho chuka hai.';
+    msg.className = 'msg err';
+    return;
+  }
+  state.usedCodes.push(code);
+  saveState();
+  addCoins(VALID_CODES[code], 'Redeem code: ' + code);
+  msg.textContent = '+' + VALID_CODES[code] + ' coins mil gaye!';
+  msg.className = 'msg ok';
+  input.value = '';
+}
+
+/* ===================== REWARDS ===================== */
+const REWARDS = [
+  {id:'perk_ad', name:'Ad-Free (24 ghante)', cost:50, type:'perk'},
+  {id:'perk_theme', name:'Golden Profile Badge', cost:80, type:'perk'},
+  {id:'play10', name:'Google Play Credit ₹10', cost:600, type:'voucher'},
+  {id:'recharge10', name:'Mobile Recharge ₹10', cost:600, type:'voucher'},
+];
+function renderRewards(){
+  const list = document.getElementById('rewardList');
+  list.innerHTML = '';
+  REWARDS.forEach(rw=>{
+    const owned = state.redeemedRewards.includes(rw.id) && rw.type==='perk';
+    const item = document.createElement('div');
+    item.className = 'reward-item';
+    item.innerHTML = `
+      <div class="ri-left">
+        <h4>${rw.name}</h4>
+        <span>${rw.cost} coins</span>
+      </div>
+      <button ${state.coins < rw.cost || owned ? 'disabled':''} id="btn_${rw.id}">${owned? 'Active' : 'Redeem'}</button>
+    `;
+    list.appendChild(item);
+    item.querySelector('button').onclick = ()=>{
+      if(state.coins < rw.cost) return;
+      if(spendCoins(rw.cost, rw.name)){
+        state.redeemedRewards.push(rw.id);
+        saveState();
+        showToast(rw.name + ' redeem ho gaya!');
+        renderRewards();
+      }
+    };
+  });
+}
+
+/* ===================== WALLET / HISTORY ===================== */
+function renderWallet(){
+  document.getElementById('walletBig').textContent = state.coins;
+  const list = document.getElementById('historyList');
+  if(state.history.length === 0){
+    list.innerHTML = '<div class="empty-hist">Abhi tak koi activity nahi hai</div>';
+    return;
+  }
+  list.innerHTML = '';
+  state.history.slice(0,30).forEach(h=>{
+    const row = document.createElement('div');
+    row.className = 'hist-row';
+    const d = new Date(h.t);
+    row.innerHTML = `
+      <div>
+        <div class="h-desc">${h.desc}</div>
+        <div class="h-time">${d.toLocaleDateString()} · ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+      <div class="h-amt ${h.amt>0? 'pos':'neg'}">${h.amt>0? '+':''}${h.amt}</div>
+    `;
+    list.appendChild(row);
+  });
+}
+
+/* ===================== RENDER ALL ===================== */
+function renderAll(){
+  renderCoinCount();
+  renderReels();
+  drawWheel();
+  refreshSpinBtn();
+  renderQuiz();
+  renderRewards();
+  renderWallet();
+}
+
+/* ===================== PWA INSTALL ===================== */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
